@@ -1,0 +1,15 @@
+{
+  "name": "labecommerce",
+  "version": "1.0.0",
+  "description": "projeto backend labenu",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "clear && node index.js olá",
+    "pedra-papel-tesoura": "clear && node pedra-papel-tesoura.js papel",
+    "par": "clear && node par-ou-impar par 2",
+    "impar": "clear && node par-ou-impar impar 3"
+  },
+  "author": "Bruno Hammes da Cruz",
+  "license": "ISC"
+}
