@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es6" /* Especifique a versão de destino do ECMAScript */,
+    "module": "commonjs" /* Especifique a geração de código do módulo*/,
+    "sourceMap": true /*Gera o arquivo '.map' correspondente. */,
+    "outDir": "./build" /* Redirecione a estrutura de saída para o diretório. */,
+    "rootDir": "./src" /* Especifique o diretório raiz dos arquivos de entrada.*/,
+    "removeComments": true /* Não emita comentários para a saída. */,
+    "esModuleInterop": true /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */ /* Disable resolving symlinks to their realpath. This correlates to the same flag in node. */,
+    "forceConsistentCasingInFileNames": true /* Ensure that casing is correct in imports. */,
+    "strict": true /* Enable all strict type-checking options. */,
+    "noImplicitAny": true /*Gera erro em declarações com um tipo 'qualquer' implícito.*/,
+    "noEmitOnError": true /* Desative a emissão de arquivos se algum erro de verificação de tipo for relatado. */,
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */,
+    "esModuleInterop": true
+  }
+}
