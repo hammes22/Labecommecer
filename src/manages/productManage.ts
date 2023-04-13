@@ -1,125 +1,97 @@
-import { CATEGORY, MessageStatus, Product } from "../types";
+import { db } from "../database/knex";
+import { MessageStatus, Product } from "../types";
 import { STATUS } from "../util/status";
 
-const products: Product[] = [
-  {
-    id: "01",
-    name: "camiseta preta",
-    price: 52.99,
-    category: CATEGORY.CAMISETAS,
-  },
-  {
-    id: "02",
-    name: "vestido de bolinha",
-    price: 95.99,
-    category: CATEGORY.VESTIDOS,
-  },
-  {
-    id: "03",
-    name: "calça deans",
-    price: 77.99,
-    category: CATEGORY.CALCA,
-  },
-  {
-    id: "04",
-    name: "camiseta estampada",
-    price: 54.99,
-    category: CATEGORY.CAMISETAS,
-  },
-];
-export function getAllProducts(): Product[] {
+export async function getAllProducts(): Promise<Product[]> {
+  const products = await db.raw(` SELECT * FROM products `);
   return products;
 }
-export function createProduct(
-  id: string,
-  name: string,
-  price: number,
-  category: CATEGORY
-): string {
-  const newProduct: Product = {
-    id,
-    name,
-    price,
-    category,
-  };
-  products.push(newProduct);
+
+export async function createProduct(product: Product): Promise<string> {
+  await db.raw(`
+  INSERT INTO
+    products(
+        id,
+        name,
+        price,
+        description,
+        image_url
+    )
+VALUES (
+  '${Math.floor(Date.now() * Math.random()).toString(36)}',
+  '${product.name}',
+  '${product.price}',
+  '${product.description}',
+  '${product.image_url}'
+    );
+  `);
   return "Produto criado com sucesso";
 }
 
-export function getProductById(id: string): Product | undefined {
-  return products.find((product) => product.id === id);
+export async function getProductById(id: string): Promise<Product | undefined> {
+  const product = await db.raw(`SELECT * FROM products WHERE id = '${id}';`);
+  return product;
 }
-export function queryProductsByName(name: string): Product[] {
-  return products.filter((product) =>
-    product.name.toLowerCase().includes(name.toLowerCase())
+
+export async function queryProductsByName(name: string): Promise<Product[]> {
+  const product = await db.raw(
+    `SELECT * From products WHERE name LIKE '%${name}%';`
   );
+  return product;
 }
 
-export function deleteProduct(id: string): MessageStatus {
-  const accountIndex = products.findIndex((product) => {
-    return product.id === id;
-  });
-  if (accountIndex > -1) {
-    products.splice(accountIndex, 1);
-    return { message: "Produto deletado com Sucesso", status: STATUS.Ok };
-  } else {
-    return {
-      message: "Produto não encontrado",
-      status: STATUS.UnprocessableEntity,
-    };
-  }
+export async function deleteProduct(id: string): Promise<MessageStatus> {
+  await db.raw(`DELETE FROM products WHERE id = '${id}';`);
+  return { message: "Produto deletado com Sucesso", status: STATUS.Ok };
 }
 
-export function editProduct(editProduct: Product): MessageStatus {
-  const accountIndex = products.findIndex((product) => {
-    return product.id === editProduct.id;
-  });
+export async function editProduct(
+  editProduct: Product
+): Promise<MessageStatus> {
+  const [product] = await await db.raw(
+    `select * from  products
+   WHERE id = '${editProduct.id}';`
+  );
 
-  if (accountIndex > -1) {
-    products.forEach((product) => {
-      if (product.id === editProduct.id) {
-        product.name = editProduct.name;
-        product.price = editProduct.price;
-      }
-    });
-    return { message: "Produto editado com sucesso", status: STATUS.Ok };
-  } else {
-    return {
-      message: "Produto não encontrado",
-      status: STATUS.UnprocessableEntity,
-    };
-  }
+  const name = editProduct.name ? editProduct.name : product.name;
+  const price = editProduct.price ? editProduct.price : product.price;
+  const description = editProduct.description
+    ? editProduct.description
+    : product.description;
+  const image_url = editProduct.image_url
+    ? editProduct.image_url
+    : product.image_url;
+
+  await db.raw(
+    `UPDATE products SET
+     name = '${name}',
+     price = '${price}',
+     description = '${description}',
+     image_url = '${image_url}'
+     WHERE id = '${editProduct.id}';`
+  );
+
+  return { message: "Produto editado com sucesso", status: STATUS.Ok };
 }
 
-export function validaProduct(product: Product): boolean {
-  if (product.id && product.name && product.price && product.category) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-export function validaNewProduct(newProduct: Product): {
+export function validaProduct(product: Product): {
   bool: boolean;
   message: string;
 } {
-  if (!validaProduct(newProduct)) {
-    return { bool: false, message: "Error ao criar Produto dados incompletos" };
-  }
-  const productId = products.find((product) => {
-    return product.id === newProduct.id;
-  });
-
-  if (productId) {
-    return { bool: false, message: "Id já existe" };
+  if (
+    product.name &&
+    product.price &&
+    product.image_url &&
+    product.description
+  ) {
+    return { bool: true, message: "ok" };
   } else {
-    return { bool: true, message: "id e email não existem" };
+    return { bool: false, message: "Error ao criar Produto dados incompletos" };
   }
 }
 
-export function validateProductId(id: string): boolean {
-  const productIndex = products.findIndex((product) => {
-    return product.id === id;
-  });
-  return productIndex > -1;
+
+export async function validateProductId(id: string): Promise<boolean> {
+  const product = await db.raw(`SELECT id FROM products WHERE id = '${id}';`);
+  return product.length > 0 ? true : false;
 }

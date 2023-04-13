@@ -1,22 +1,20 @@
 import { STATUS } from "./util/status";
 
-export enum CATEGORY {
-  CAMISETAS = "camisetas",
-  CALCA = "calça",
-  VESTIDOS = "vestidos",
-}
 
 export type User = {
-  id: string;
+  id?: string;
+  name: string;
   email: string;
   password: string;
+  createdAt?: string;
 };
 
 export type Product = {
-  id: string;
+  id?: string;
   name: string;
   price: number;
-  category: CATEGORY;
+  description: string;
+  image_url: string;
 };
 
 export type Purchase = {

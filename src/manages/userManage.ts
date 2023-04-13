@@ -1,111 +1,88 @@
+import { db } from "../database/knex";
 import { MessageStatus, User } from "../types";
 import { STATUS } from "../util/status";
 
-const users: User[] = [
-  {
-    id: "001",
-    email: "user001@email.com",
-    password: "password",
-  },
-  {
-    id: "002",
-    email: "user002@email.com",
-    password: "password",
-  },
-  {
-    id: "003",
-    email: "user003@email.com",
-    password: "password",
-  },
-];
 
-export function getAllUsers() {
+export async function getAllUsers() {
+  const users = await db.raw(` SELECT * FROM users `);
   return users;
 }
-export function createUser(
-  id: string,
+export async function createUser(
+  name: string,
   email: string,
   password: string
-): string {
-  const newUser: User = {
-    id,
-    email,
-    password,
-  };
-  users.push(newUser);
+): Promise<string> {
+  console.log(name, email, password);
+
+  await db.raw(`
+  INSERT INTO users(id, name, email, password)
+VALUES (
+  '${Math.floor(Date.now() * Math.random()).toString(36)}',
+  '${name}',
+  '${email}',
+  '${password}'
+    );
+  `);
   return "Cadastro realizado com sucesso";
 }
 
-export function deleteUser(id: string): MessageStatus {
-  const accountIndex = users.findIndex((user) => {
-    return user.id === id;
-  });
-  if (accountIndex > -1) {
-    users.splice(accountIndex, 1);
-    return { message: "Usuario deletado com Sucesso", status: STATUS.Ok };
-  } else {
-    return {
-      message: "usuario não encontrado",
-      status: STATUS.UnprocessableEntity,
-    };
-  }
+export async function deleteUser(id: string): Promise<MessageStatus> {
+  await db.raw(`DELETE FROM users WHERE id = '${id}';`);
+  return { message: "Usuario deletado com Sucesso", status: STATUS.Ok };
 }
 
-export function editUser(editUser: User): MessageStatus {
-  const accountIndex = users.findIndex((user) => {
-    return user.id === editUser.id;
-  });
+export async function editUser(editUser: User): Promise<MessageStatus> {
+  const [user] = await await db.raw(
+    `select * from  users
+   WHERE id = '${editUser.id}';`
+  );
+  const name = editUser.name ? editUser.name : user.name;
+  const email = editUser.email ? editUser.email : user.email;
+  const password = editUser.password ? editUser.password : user.password;
 
-  if (accountIndex > -1) {
-    users.forEach((user) => {
-      if (user.id === editUser.id) {
-        user.email = editUser.email;
-        user.password = editUser.password;
-      }
-    });
-    return { message: "Usuario editado com sucesso", status: STATUS.Ok };
-  } else {
-    return {
-      message: "Usuario não encontrado",
-      status: STATUS.UnprocessableEntity,
-    };
-  }
+  console.log(user);
+  await db.raw(
+    `UPDATE users SET
+     name = '${name}',
+    email = '${email}',
+    password = '${password}'
+     WHERE id = '${editUser.id}';`
+  );
+  return { message: "Usuario editado com sucesso", status: STATUS.Ok };
 }
 
-export function validaUser(user: User): boolean {
-  if (user.id && user.email && user.password) {
+export async function validaUser(user: User): Promise<boolean> {
+  if (user.name && user.email && user.password) {
     return true;
   } else {
     return false;
   }
 }
-export function validaNewUser(newUser: User): {
+
+export async function validaNewUser(newUser: User): Promise<{
   bool: boolean;
   message: string;
-} {
+}> {
   if (!validaUser(newUser)) {
     return { bool: false, message: "Error ao criar usuario dados incompletos" };
   }
-  const accountIndexId = users.find((user) => {
-    return user.id === newUser.id;
-  });
-  const accountIndexEmail = users.find((user) => {
-    return user.email === newUser.email;
-  });
-  if (accountIndexId && accountIndexEmail) {
-    return { bool: false, message: "Id e email já existe" };
-  } else if (accountIndexId) {
-    return { bool: false, message: "Id já existe" };
-  } else if (accountIndexEmail) {
+  if (await emailCadastrado(newUser.email)) {
     return { bool: false, message: "email já existe" };
-  } else {
-    return { bool: true, message: "id e email não existem" };
   }
+  return { bool: true, message: "email não existem" };
 }
 
-export function validateUserId(id: string): boolean {
-  const accountIndex = users.findIndex((user) => {
-    return user.id === id;
-  });
-  return accountIndex > -1;
+async function emailCadastrado(email: string): Promise<boolean> {
+  const accountEmail = await db.raw(
+    `select email from users WHERE email = '${email}'`
+  );
+  return accountEmail.length > 0 ? true : false;
+}
+
+export async function validateUserId(id: string): Promise<boolean> {
+  console.log(id);
+  const accountId = await db.raw(`select id from users WHERE id = '${id}'`);
+  console.log(accountId);
+
+  return accountId.length > 0 ? true : false;
 }
