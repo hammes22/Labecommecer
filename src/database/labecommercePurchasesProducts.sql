@@ -5,7 +5,7 @@ CREATE TABLE
         purchase_id TEXT NOT NULL,
         product_id TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT(1),
-        Foreign Key (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+        Foreign Key (purchase_id) REFERENCES purchases(purchaseId) ON DELETE CASCADE,
         Foreign Key (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
 
@@ -17,7 +17,7 @@ INSERT INTO
         product_id,
         quantity
     )
-VALUES ("c003", "p01", 3), ("c004", "p02", 2), ("c005", "p03", 4);
+VALUES ("pu003", "p01", 3), ("pu003", "p02", 2), ("pu003", "p03", 4);
 
 SELECT * FROM purchases_products;
 

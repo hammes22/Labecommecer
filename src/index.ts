@@ -7,17 +7,9 @@ import {
   deleteUser,
   editUser,
   getAllUsers,
-  validaNewUser,
-  validaUser,
-  validateUserId,
 } from "./manages/userManage";
 
-import {
-  createPurchase,
-  getAllPurchasesFromUserId,
-  validaNewPurchase,
-} from "./manages/purchasesManage";
-import { Product, User } from "./types";
+import { Product, Purchase, PurchaseProduct, User } from "./types";
 import {
   createProduct,
   deleteProduct,
@@ -25,9 +17,16 @@ import {
   getAllProducts,
   getProductById,
   queryProductsByName,
-  validaProduct,
-  validateProductId,
 } from "./manages/productManage";
+import {
+  createPurchase,
+  deleteProductPurchase,
+  deletePurchase,
+  getAllPurchase,
+  getPurchaseId,
+} from "./manages/purchasesManage";
+import { TABELA_PURCHASES_PRODUCTS } from "./util/returnTableNames";
+import { db } from "./database/knex";
 
 const app = express();
 
@@ -53,16 +52,13 @@ app.get(ReturnPath.Users, async (req: Request, res: Response) => {
 
 app.post(ReturnPath.Users, async (req: Request, res: Response) => {
   try {
-    const validateUser = await validaNewUser(req.body);
-
-    if (await !validateUser.bool) {
-      throw new Error(validateUser.message);
-    }
-    const result: string = await createUser(
-      req.body.name,
-      req.body.email,
-      req.body.password
-    );
+    const newUser: User = {
+      id: Math.floor(Date.now() * Math.random()).toString(36),
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password,
+    };
+    const result: string = await createUser(newUser);
     res.status(STATUS.Created).send(result);
   } catch (error: any) {
     res.status(STATUS.BadRequest).send(error.message);
@@ -71,13 +67,8 @@ app.post(ReturnPath.Users, async (req: Request, res: Response) => {
 
 app.put(ReturnPath.UserId, async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
-    console.log(id);
-    if (!(await validateUserId(id))) {
-      throw new Error("Usuario não encontrado");
-    }
     const user: User = {
-      id: id,
+      id: req.params.id,
       name: req.body.name,
       email: req.body.email,
       password: req.body.password,
@@ -90,11 +81,9 @@ app.put(ReturnPath.UserId, async (req: Request, res: Response) => {
 });
 
 app.delete(ReturnPath.UserId, async (req: Request, res: Response) => {
+  console.log("delete user");
   try {
     const id = req.params.id;
-    if (!(await validateUserId(id))) {
-      throw new Error("Usuario não encontrado");
-    }
     const result = await deleteUser(id);
     res.status(result.status).send(result.message);
   } catch (error: any) {
@@ -115,13 +104,10 @@ app.get(ReturnPath.Products, async (req: Request, res: Response) => {
 app.get(ReturnPath.ProductSearch, async (req: Request, res: Response) => {
   try {
     const search = req.query.search as string;
-
     if (search.length <= 1) {
       throw new Error("Pesquisa tem que ter no mínimo 2 caracteres");
     }
-    const result = search
-      ? await queryProductsByName(search)
-      : await getAllProducts();
+    const result = await queryProductsByName(search);
     res.status(STATUS.Ok).send(result);
   } catch (error: any) {
     res.status(STATUS.BadRequest).send(error.message);
@@ -130,11 +116,7 @@ app.get(ReturnPath.ProductSearch, async (req: Request, res: Response) => {
 
 app.get(ReturnPath.ProductsId, async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
-    if (!(await validateProductId(id))) {
-      throw new Error("Produto não encontrado");
-    }
-    const result = await getProductById(id);
+    const result = await getProductById(req.params.id);
     res.status(STATUS.Ok).send(result);
   } catch (error: any) {
     res.status(STATUS.BadRequest).send(error.message);
@@ -144,18 +126,14 @@ app.get(ReturnPath.ProductsId, async (req: Request, res: Response) => {
 app.post(ReturnPath.Products, async (req: Request, res: Response) => {
   try {
     const product: Product = {
+      id: Math.floor(Date.now() * Math.random()).toString(36),
       name: req.body.name,
       price: req.body.price,
       description: req.body.description,
       image_url: req.body.image_url,
     };
 
-    const validateProduct = validaProduct(product);
-
-    if (!validateProduct.bool) {
-      throw new Error(validateProduct.message);
-    }
-    const result: Promise<string> = createProduct(product);
+    const result = createProduct(product);
     res.status(STATUS.Created).send(await result);
   } catch (error: any) {
     res.status(STATUS.BadRequest).send(error.message);
@@ -164,12 +142,8 @@ app.post(ReturnPath.Products, async (req: Request, res: Response) => {
 
 app.put(ReturnPath.ProductsId, async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
-    if (!(await validateProductId(id))) {
-      throw new Error("produto não encontrado");
-    }
     const product: Product = {
-      id: id,
+      id: req.params.id,
       name: req.body.name,
       description: req.body.description,
       image_url: req.body.image_url,
@@ -184,11 +158,7 @@ app.put(ReturnPath.ProductsId, async (req: Request, res: Response) => {
 
 app.delete(ReturnPath.ProductsId, async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
-    if (!(await validateProductId(id))) {
-      throw new Error("Produto não encontrado");
-    }
-    const result = await deleteProduct(id);
+    const result = await deleteProduct(req.params.id);
     res.status(result.status).send(result.message);
   } catch (error: any) {
     res.status(STATUS.BadRequest).send(error.message);
@@ -197,33 +167,85 @@ app.delete(ReturnPath.ProductsId, async (req: Request, res: Response) => {
 
 //Purchases
 
-// app.post(ReturnPath.Purchases, (req: Request, res: Response) => {
-//   try {
-//     const validate = validaNewPurchase(req.body);
-//     if (!validate.bool) {
-//       throw new Error(validate.message);
-//     }
-//     const result: string = createPurchase(
-//       req.body.userId,
-//       req.body.productId,
-//       req.body.quantity,
-//       req.body.totalPrice
-//     );
-//     res.status(STATUS.Created).send(result);
-//   } catch (error: any) {
-//     res.status(STATUS.BadRequest).send(error.message);
-//   }
-// });
+app.get(ReturnPath.PurchasesId, async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    res.status(STATUS.Ok).send(await getPurchaseId(id));
+  } catch (error: any) {
+    res.status(STATUS.BadRequest).send(error.message);
+  }
+});
 
-// app.get(ReturnPath.UsersIdPurchases, async (req: Request, res: Response) => {
-//   try {
-//     const id = req.params.id;
-//     if (!validateUserId(id)) {
-//       throw new Error("Usuario não encontrado");
-//     }
-//     const result = await getAllPurchasesFromUserId(id);
-//     res.status(STATUS.Ok).send(result);
-//   } catch (error: any) {
-//     res.status(STATUS.BadRequest).send(error.message);
-//   }
-// });
+app.post(ReturnPath.Purchases, async (req: Request, res: Response) => {
+  try {
+    const newPurchase: Purchase = {
+      purchaseId: Math.floor(Date.now() * Math.random()).toString(36),
+      totalPrice: req.body.totalPrice,
+      isPaid: Number(req.body.isPaid),
+      buyerId: req.body.buyerId,
+    };
+    const newPurchaseProduct: PurchaseProduct[] = req.body.purchasesProduct;
+    const result = await createPurchase(newPurchase, newPurchaseProduct);
+    res.status(STATUS.Created).send(result);
+  } catch (error: any) {
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    res.status(error.statusCode).send(error.message);
+  }
+});
+
+app.get(ReturnPath.Purchases, async (req: Request, res: Response) => {
+  try {
+    res.status(STATUS.Ok).send(await getAllPurchase());
+  } catch (error: any) {
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    res.status(error.statusCode).send(error.message);
+  }
+});
+
+app.delete(ReturnPath.PurchasesId, async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    res.status(STATUS.Ok).send(await deletePurchase(id));
+  } catch (error: any) {
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    res.status(error.statusCode).send(error.message);
+  }
+});
+
+app.get(ReturnPath.PurchasesProducts, async (req: Request, res: Response) => {
+  try {
+    const PurchasesProducts = await db(
+      TABELA_PURCHASES_PRODUCTS.purchases_products
+    );
+    res.status(STATUS.Ok).send(PurchasesProducts);
+  } catch (error: any) {
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    res.status(error.statusCode).send(error.message);
+  }
+});
+
+app.delete(
+  ReturnPath.PurchasesProductsId,
+  async (req: Request, res: Response) => {
+    try {
+      const idpurchase = req.params.idpurchase;
+      const idproduct = req.params.idproduct;
+      res
+        .status(STATUS.Ok)
+        .send(await deleteProductPurchase(idpurchase, idproduct));
+    } catch (error: any) {
+      error.statusCode
+        ? error.statusCode
+        : (error.statusCode = STATUS.BadRequest);
+      res.status(error.statusCode).send(error.message);
+    }
+  }
+);

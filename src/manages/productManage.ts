@@ -1,77 +1,75 @@
 import { db } from "../database/knex";
 import { MessageStatus, Product } from "../types";
+import { TABELA_PRODUCTS } from "../util/returnTableNames";
 import { STATUS } from "../util/status";
 
 export async function getAllProducts(): Promise<Product[]> {
-  const products = await db.raw(` SELECT * FROM products `);
+  const products = await db("products");
   return products;
 }
 
-export async function createProduct(product: Product): Promise<string> {
-  await db.raw(`
-  INSERT INTO
-    products(
-        id,
-        name,
-        price,
-        description,
-        image_url
-    )
-VALUES (
-  '${Math.floor(Date.now() * Math.random()).toString(36)}',
-  '${product.name}',
-  '${product.price}',
-  '${product.description}',
-  '${product.image_url}'
-    );
-  `);
-  return "Produto criado com sucesso";
-}
-
-export async function getProductById(id: string): Promise<Product | undefined> {
-  const product = await db.raw(`SELECT * FROM products WHERE id = '${id}';`);
-  return product;
-}
-
 export async function queryProductsByName(name: string): Promise<Product[]> {
-  const product = await db.raw(
-    `SELECT * From products WHERE name LIKE '%${name}%';`
-  );
+  const product = await db("products").whereLike("name", `%${name}%`);
   return product;
 }
 
-export async function deleteProduct(id: string): Promise<MessageStatus> {
-  await db.raw(`DELETE FROM products WHERE id = '${id}';`);
-  return { message: "Produto deletado com Sucesso", status: STATUS.Ok };
+export async function getProductById(id: string): Promise<Product> {
+  try {
+    const [product] = await db
+      .select("*")
+      .from(TABELA_PRODUCTS.products)
+      .where({ id: id });
+
+    if (product) {
+      return product;
+    } else {
+      throw new Error("Produto não encontrado");
+    }
+  } catch (error: any) {
+    error.statusCode = STATUS.BadRequest;
+    throw error;
+  }
+}
+
+export async function createProduct(newProduct: Product): Promise<string> {
+  const validateProduct = validaProduct(newProduct);
+  if (validateProduct.bool) {
+    await db.insert(newProduct).from("products");
+    return "Produto criado com sucesso";
+  } else {
+    throw new Error(validateProduct.message);
+  }
 }
 
 export async function editProduct(
   editProduct: Product
 ): Promise<MessageStatus> {
-  const [product] = await await db.raw(
-    `select * from  products
-   WHERE id = '${editProduct.id}';`
-  );
+  const [product] = await db("products").where({ id: editProduct.id });
 
-  const name = editProduct.name ? editProduct.name : product.name;
-  const price = editProduct.price ? editProduct.price : product.price;
-  const description = editProduct.description
-    ? editProduct.description
-    : product.description;
-  const image_url = editProduct.image_url
-    ? editProduct.image_url
-    : product.image_url;
+  if (product) {
+    await db
+      .update({
+        name: editProduct.name || product.name,
+        price: editProduct.price || product.price,
+        description: editProduct.description || product.description,
+        image_url: editProduct.image_url || product.image_url,
+      })
+      .from("products")
+      .where({ id: editProduct.id });
+    return { message: "Produto editado com sucesso", status: STATUS.Ok };
+  } else {
+    throw new Error("produto não encontrado");
+  }
+}
 
-  await db.raw(
-    `UPDATE products SET
-     name = '${name}',
-     price = '${price}',
-     description = '${description}',
-     image_url = '${image_url}'
-     WHERE id = '${editProduct.id}';`
-  );
-
-  return { message: "Produto editado com sucesso", status: STATUS.Ok };
+export async function deleteProduct(id: string): Promise<MessageStatus> {
+  const [product] = await db("products").where({ id });
+  if (product) {
+    await db.del().from("products").where({ id: id });
+    return { message: "Produto deletado com Sucesso", status: STATUS.Ok };
+  } else {
+    throw new Error("Produto não encontrado");
+  }
 }
 
 export function validaProduct(product: Product): {
@@ -88,10 +86,4 @@ export function validaProduct(product: Product): {
   } else {
     return { bool: false, message: "Error ao criar Produto dados incompletos" };
   }
-}
-
-
-export async function validateProductId(id: string): Promise<boolean> {
-  const product = await db.raw(`SELECT id FROM products WHERE id = '${id}';`);
-  return product.length > 0 ? true : false;
 }

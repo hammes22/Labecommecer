@@ -1,6 +1,5 @@
 import { STATUS } from "./util/status";
 
-
 export type User = {
   id?: string;
   name: string;
@@ -18,13 +17,23 @@ export type Product = {
 };
 
 export type Purchase = {
-  userId: string;
-  productId: string;
-  quantity: number;
+  purchaseId: string;
   totalPrice: number;
+  isPaid?: Number;
+  buyerId: string;
+};
+
+export type PurchaseProduct = {
+  purchase_id: string;
+  product_id: string;
+  quantity: number;
 };
 
 export type MessageStatus = {
   message: string;
   status: STATUS;
+};
+export type MessageError = {
+  invalid: boolean;
+  message: string;
 };
