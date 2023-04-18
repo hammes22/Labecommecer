@@ -1,4 +1,4 @@
-export function sumByPropName(nameProp:string, sumProp:string, arr:any) {
+export function sumByPropName(nameProp: string, sumProp: string, arr: any) {
   const map = new Map();
 
   for (const obj of arr) {

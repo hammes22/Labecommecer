@@ -8,23 +8,25 @@ export enum TABELA_PURCHASES {
 }
 
 export enum TABELA_USERS {
-  USERS = "users",
-  USERS_ID = "users.id",
-  email = "users.email",
-  name = "users.name",
+  Users_Id = "users.id",
+  Name = "users.name",
+  Users = "users",
+  Email = "users.email",
+  Password = "users.password",
+  CreatedAt = "users.created_at as createdAt",
 }
 
 export enum TABELA_PURCHASES_PRODUCTS {
-  purchases_products = "purchases_products",
-  purchase_id = "purchase_id",
-  product_id = "product_id",
-  quantity = "quantity",
+  PurchasesProducts = "purchases_products",
+  PurchaseId = "purchases_products.purchase_id as purchaseId",
+  ProductId = "purchases_products.product_id as productId",
+  Quantity = "purchases_products.quantity",
 }
 export enum TABELA_PRODUCTS {
-  products = "products",
-  id = "products.id",
-  name = "name",
-  price = "price",
-  description = "description",
-  image_url = "image_url",
+  Products = "products",
+  Id = "products.id",
+  Name = "products.name",
+  Price = "products.price",
+  Description = "products.description",
+  Image_url = "products.image_url as imageUrl",
 }

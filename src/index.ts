@@ -25,7 +25,10 @@ import {
   getAllPurchase,
   getPurchaseId,
 } from "./manages/purchasesManage";
-import { TABELA_PURCHASES_PRODUCTS } from "./util/returnTableNames";
+import {
+  TABELA_PURCHASES_PRODUCTS,
+  TABELA_USERS,
+} from "./util/returnTableNames";
 import { db } from "./database/knex";
 
 const app = express();
@@ -61,7 +64,10 @@ app.post(ReturnPath.Users, async (req: Request, res: Response) => {
     const result: string = await createUser(newUser);
     res.status(STATUS.Created).send(result);
   } catch (error: any) {
-    res.status(STATUS.BadRequest).send(error.message);
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    res.status(error.statusCode).send(error.message);
   }
 });
 
@@ -130,7 +136,7 @@ app.post(ReturnPath.Products, async (req: Request, res: Response) => {
       name: req.body.name,
       price: req.body.price,
       description: req.body.description,
-      image_url: req.body.image_url,
+      image_url: req.body.imageUrl,
     };
 
     const result = createProduct(product);
@@ -181,10 +187,9 @@ app.post(ReturnPath.Purchases, async (req: Request, res: Response) => {
     const newPurchase: Purchase = {
       purchaseId: Math.floor(Date.now() * Math.random()).toString(36),
       totalPrice: req.body.totalPrice,
-      isPaid: Number(req.body.isPaid),
       buyerId: req.body.buyerId,
     };
-    const newPurchaseProduct: PurchaseProduct[] = req.body.purchasesProduct;
+    const newPurchaseProduct: PurchaseProduct[] = req.body.product;
     const result = await createPurchase(newPurchase, newPurchaseProduct);
     res.status(STATUS.Created).send(result);
   } catch (error: any) {
@@ -221,7 +226,7 @@ app.delete(ReturnPath.PurchasesId, async (req: Request, res: Response) => {
 app.get(ReturnPath.PurchasesProducts, async (req: Request, res: Response) => {
   try {
     const PurchasesProducts = await db(
-      TABELA_PURCHASES_PRODUCTS.purchases_products
+      TABELA_PURCHASES_PRODUCTS.PurchasesProducts
     );
     res.status(STATUS.Ok).send(PurchasesProducts);
   } catch (error: any) {

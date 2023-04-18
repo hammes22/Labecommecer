@@ -15,26 +15,26 @@ export async function getAllPurchase() {
     .select(
       TABELA_PURCHASES.purchaseId,
       TABELA_PURCHASES.BUYER_ID,
-      TABELA_USERS.name
+      TABELA_USERS.Name
     )
     .from(TABELA_PURCHASES.PURCHASES)
     .innerJoin(
-      TABELA_USERS.USERS,
-      TABELA_USERS.USERS_ID,
+      TABELA_USERS.Users,
+      TABELA_USERS.Users_Id,
       "=",
       TABELA_PURCHASES.BUYER_ID
     );
 
   for (const item of purchases) {
     item.ProductList = await db
-      .select(TABELA_PURCHASES_PRODUCTS.product_id)
-      .from(TABELA_PURCHASES_PRODUCTS.purchases_products)
+      .select(TABELA_PURCHASES_PRODUCTS.ProductId)
+      .from(TABELA_PURCHASES_PRODUCTS.PurchasesProducts)
       .where({ purchase_id: item.purchaseId })
       .innerJoin(
-        TABELA_PRODUCTS.products,
-        TABELA_PURCHASES_PRODUCTS.product_id,
+        TABELA_PRODUCTS.Products,
+        TABELA_PURCHASES_PRODUCTS.ProductId,
         "=",
-        TABELA_PRODUCTS.id
+        TABELA_PRODUCTS.Id
       );
   }
   return purchases;
@@ -54,35 +54,35 @@ export async function getPurchaseId(id: string): Promise<Purchase[]> {
         TABELA_PURCHASES.createdAt,
         TABELA_PURCHASES.isPaid,
         TABELA_PURCHASES.BUYER_ID,
-        TABELA_USERS.email,
-        TABELA_USERS.name
+        TABELA_USERS.Email,
+        TABELA_USERS.Name
       )
       .from(TABELA_PURCHASES.PURCHASES)
       .where({ purchaseId: id })
       .innerJoin(
-        TABELA_USERS.USERS,
+        TABELA_USERS.Users,
         TABELA_PURCHASES.BUYER_ID,
         "=",
-        TABELA_USERS.USERS_ID
+        TABELA_USERS.Users_Id
       );
 
     const purchasesProduct = await db
       .select(
-        TABELA_PURCHASES_PRODUCTS.product_id,
-        TABELA_PRODUCTS.name,
-        TABELA_PURCHASES_PRODUCTS.quantity,
-        TABELA_PRODUCTS.price,
-        TABELA_PRODUCTS.description,
-        TABELA_PRODUCTS.image_url
+        TABELA_PURCHASES_PRODUCTS.ProductId,
+        TABELA_PRODUCTS.Name,
+        TABELA_PURCHASES_PRODUCTS.Quantity,
+        TABELA_PRODUCTS.Price,
+        TABELA_PRODUCTS.Description,
+        TABELA_PRODUCTS.Image_url
       )
 
-      .from(TABELA_PURCHASES_PRODUCTS.purchases_products)
+      .from(TABELA_PURCHASES_PRODUCTS.PurchasesProducts)
       .where({ purchase_id: id })
       .innerJoin(
-        TABELA_PRODUCTS.products,
-        TABELA_PURCHASES_PRODUCTS.product_id,
+        TABELA_PRODUCTS.Products,
+        TABELA_PURCHASES_PRODUCTS.ProductId,
         "=",
-        TABELA_PRODUCTS.id
+        TABELA_PRODUCTS.Id
       );
 
     return {
@@ -101,13 +101,13 @@ export async function createPurchase(
   try {
     await validaPurchase(newPurchase);
     await validaPurchaseProduct(newPurchaseProduct);
-
     const reducePurchaseProduct = sumByPropName(
-      TABELA_PURCHASES_PRODUCTS.product_id,
-      TABELA_PURCHASES_PRODUCTS.quantity,
+      "product_id",
+      "quantity",
       newPurchaseProduct
     );
     await validaProductSomaTotal(reducePurchaseProduct, newPurchase.totalPrice);
+    console.log(reducePurchaseProduct);
     const [id] = await db
       .insert(newPurchase)
       .returning(TABELA_PURCHASES.purchaseId)
@@ -120,12 +120,11 @@ export async function createPurchase(
         }
       });
 
+    console.log(reducePurchaseProduct);
     if (id) {
       for (let item of reducePurchaseProduct) {
         item.purchase_id = id.purchaseId;
-        await db
-          .insert(item)
-          .into(TABELA_PURCHASES_PRODUCTS.purchases_products);
+        await db.insert(item).into(TABELA_PURCHASES_PRODUCTS.PurchasesProducts);
       }
     }
     return `Pedido N°: ${id.purchaseId} realizado com sucesso`;
@@ -160,7 +159,7 @@ export async function deleteProductPurchase(
 ) {
   try {
     const purchaseProduct = await db(
-      TABELA_PURCHASES_PRODUCTS.purchases_products
+      TABELA_PURCHASES_PRODUCTS.PurchasesProducts
     ).where({ purchase_id: idpurchase });
 
     if (purchaseProduct.length <= 0) {
@@ -177,10 +176,8 @@ export async function deleteProductPurchase(
 
     await db
       .del()
-      .from(TABELA_PURCHASES_PRODUCTS.purchases_products)
+      .from(TABELA_PURCHASES_PRODUCTS.PurchasesProducts)
       .where({ purchase_id: idpurchase, product_id: idproduct });
-
-
 
     return `produto ${idproduct} deletado do pedido ${idpurchase}`;
   } catch (error: any) {
@@ -229,12 +226,6 @@ async function validaPurchaseProduct(newPurchaseProduct: PurchaseProduct[]) {
         throw new Error("valor tem que ser maior que 0");
       }
     });
-
-    const reducePurchaseProduct = sumByPropName(
-      TABELA_PURCHASES_PRODUCTS.product_id,
-      TABELA_PURCHASES_PRODUCTS.quantity,
-      newPurchaseProduct
-    );
   } catch (error: any) {
     error.statusCode = STATUS.BadRequest;
     throw error;
@@ -250,7 +241,7 @@ async function validaProductSomaTotal(
     for (const item of reducePurchaseProduct) {
       const [id] = await db
         .select("*")
-        .from(TABELA_PRODUCTS.products)
+        .from(TABELA_PRODUCTS.Products)
         .where({ id: item.product_id });
       if (!id) {
         throw new Error(`Produto ${item.product_id} não encontrado`);

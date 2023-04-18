@@ -4,15 +4,35 @@ import { TABELA_USERS } from "../util/returnTableNames";
 import { STATUS } from "../util/status";
 
 export async function getAllUsers() {
-  const users = await db("users");
+  const users = await db(TABELA_USERS.Users).select(
+    TABELA_USERS.Users_Id,
+    TABELA_USERS.Name,
+    TABELA_USERS.Email,
+    TABELA_USERS.Password,
+    TABELA_USERS.CreatedAt
+  );
   return users;
+}
+
+export async function createUser(newUser: User): Promise<string> {
+  try {
+    validaUser(newUser);
+    await emailCadastrado(newUser.email);
+    await db.insert(newUser).from(TABELA_USERS.Users);
+    return "Cadastro realizado com sucesso";
+  } catch (error: any) {
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    throw error;
+  }
 }
 
 export async function getUserById(id: string): Promise<User> {
   try {
     const [user] = await db
       .select("*")
-      .from(TABELA_USERS.USERS)
+      .from(TABELA_USERS.Users)
       .where({ id: id });
 
     if (user) {
@@ -24,17 +44,6 @@ export async function getUserById(id: string): Promise<User> {
     error.statusCode = STATUS.BadRequest;
     throw error;
   }
-}
-
-export async function createUser(newUser: User): Promise<string> {
-  const validateUser = await validaNewUser(newUser);
-
-  if (!validateUser.bool) {
-    throw new Error(validateUser.message);
-  }
-
-  await db.insert(newUser).from("users");
-  return "Cadastro realizado com sucesso";
 }
 
 export async function deleteUser(id: string): Promise<MessageStatus> {
@@ -63,31 +72,36 @@ export async function editUser(editUser: User): Promise<MessageStatus> {
   return { message: "Usuario editado com sucesso", status: STATUS.Ok };
 }
 
-export function validaUser(user: User): boolean {
-  if (user.name && user.email && user.password) {
-    return true;
-  } else {
-    return false;
+export function validaUser(user: User) {
+  try {
+    if (!user.name) {
+      throw new Error("Nome de usuario invalido");
+    }
+    if (!user.email) {
+      throw new Error("E-mail invalido");
+    }
+    if (!user.password) {
+      throw new Error("password de usuario invalido");
+    }
+  } catch (error: any) {
+    error.statusCode
+      ? error.statusCode
+      : (error.statusCode = STATUS.BadRequest);
+    throw error;
   }
 }
 
-async function validaNewUser(newUser: User): Promise<{
-  bool: boolean;
-  message: string;
-}> {
-  if (!validaUser(newUser)) {
-    return { bool: false, message: "Error ao criar usuario dados incompletos" };
+export async function emailCadastrado(email: string) {
+  try {
+    const [accountEmail] = await db
+      .select(TABELA_USERS.Email)
+      .from(TABELA_USERS.Users)
+      .where({ email: email });
+    if (accountEmail) {
+      throw new Error(`Email: ${email} já existe tente outro email`);
+    }
+    return;
+  } catch (error: any) {
+    throw error;
   }
-  if (await emailCadastrado(newUser.email)) {
-    return { bool: false, message: "email já existe" };
-  }
-  return { bool: true, message: "email não existem" };
-}
-
-async function emailCadastrado(email: string): Promise<boolean> {
-  const [accountEmail] = await db
-    .select("email")
-    .from("users")
-    .where({ email: email });
-  return accountEmail ? true : false;
 }
